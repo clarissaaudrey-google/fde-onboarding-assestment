@@ -13,7 +13,7 @@ from finsentry.tools import (
 from finsentry.logger import IntentOutcomeSpan, logger
 from finsentry.memory import load_session, save_session, compact_history_async, AsyncMemoryManager
 
-# Robust System Instructions (Constitution) (Rubric 2.1)
+# Robust System Instructions (Constitution)
 CONSTITUTION = """
 You are FinSentry, an autonomous Subscription & Expense Concierge Agent.
 You operate under the following core constitution:
@@ -31,11 +31,11 @@ NEGOTIATOR_PROMPT = "You are a specialist in customer success disputes. Draft cl
 class ReceiptAnalyzerAgent:
     """Specialized worker agent to extract financial metrics from raw receipt text.
 
-    Uses Gemini Flash for speed and cost efficiency (Rubric 3.2).
+    Uses Gemini Flash for speed and cost efficiency.
     """
     def __init__(self, use_mock: bool = False):
         self.use_mock = use_mock
-        self.model_name = "gemini-2.5-flash"  # Strategic Model Routing (Rubric 3.2)
+        self.model_name = "gemini-2.5-flash"  # Strategic Model Routing
 
     def analyze(self, raw_text: str) -> Dict[str, Any]:
         with IntentOutcomeSpan("receipt_analyzer_worker", {"model": self.model_name}) as span:
@@ -79,11 +79,11 @@ class ReceiptAnalyzerAgent:
 class SubscriptionNegotiatorAgent:
     """Specialized worker agent to draft cancellation or dispute arguments.
 
-    Uses Gemini Pro for deep reasoning and negotiation layout (Rubric 3.2).
+    Uses Gemini Pro for deep reasoning and negotiation layout.
     """
     def __init__(self, use_mock: bool = False):
         self.use_mock = use_mock
-        self.model_name = "gemini-2.5-pro"  # Strategic Model Routing (Rubric 3.2)
+        self.model_name = "gemini-2.5-pro"  # Strategic Model Routing
 
     def draft_dispute_argument(self, vendor: str, amount: float, reason: str) -> str:
         with IntentOutcomeSpan("negotiator_worker", {"model": self.model_name, "vendor": vendor}) as span:
@@ -112,7 +112,7 @@ class SubscriptionNegotiatorAgent:
 
 
 class CoordinatorAgent:
-    """Coordinator Agent implementing the Multi-Agent Pattern (Rubric 3.1).
+    """Coordinator Agent implementing the Multi-Agent Pattern.
 
     It manages session memory, intercepts intents, orchestrates specialized workers,
     and runs policy checks on outputs before finalizing.
@@ -140,17 +140,17 @@ class CoordinatorAgent:
             # Add user message to history
             history.append({"role": "user", "content": user_message})
 
-            # Check and run async history compaction if bloated (Rubric 2.2 / 2.4)
+            # Check and run async history compaction if bloated
             history = await compact_history_async(history, None)
 
-            # 2. Strategic Routing & Worker Orchestration (Rubric 3.1 / 3.2)
+            # 2. Strategic Routing & Worker Orchestration
             msg_lower = user_message.lower()
             response_text = ""
             
             if not self.use_mock:
                 try:
                     client = genai.Client(api_key=get_gemini_api_key())
-                    # Native Gemini Tool Use / Function Calling (Rubric 1.1 / 1.3)
+                    # Native Gemini Tool Use / Function Calling
                     response = client.models.generate_content(
                         model="gemini-2.5-pro",
                         contents=user_message,
@@ -207,7 +207,7 @@ class CoordinatorAgent:
             else:
                 response_text = await self._fallback_local_routing(user_message, msg_lower, span)
 
-            # 3. Guardrails & Policy self-evaluation (Rubric 3.3)
+            # 3. Guardrails & Policy self-evaluation
             is_valid = self._policy_self_evaluation(response_text)
             if not is_valid:
                 response_text = "SECURITY WARNING: The generated response violated FinSentry safety policies. Action aborted."
@@ -222,7 +222,7 @@ class CoordinatorAgent:
             return response_text
 
     async def _fallback_local_routing(self, user_message: str, msg_lower: str, span: Any) -> str:
-        """Helper for local mock execution and fallback routing (Rubric 1.4)."""
+        """Helper for local mock execution and fallback routing."""
         response_text = ""
         if "analyze receipt" in msg_lower or "upload receipt" in msg_lower or "invoice:" in msg_lower:
             raw_text = user_message.split("invoice:", 1)[-1] if "invoice:" in msg_lower else user_message
@@ -268,7 +268,7 @@ class CoordinatorAgent:
         return response_text
 
     def _policy_self_evaluation(self, generated_response: str) -> bool:
-        """Post-processing evaluation guardrail (Rubric 3.3).
+        """Post-processing evaluation guardrail.
 
         Ensures the agent doesn't reveal any credit cards, SSNs, or initiate cancellations
         without human validation warnings.

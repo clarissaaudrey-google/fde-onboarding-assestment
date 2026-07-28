@@ -2,7 +2,7 @@ import os
 from google.cloud import secretmanager
 from google.api_core.exceptions import GoogleAPIError
 
-# Secure Secret Management (Rubric 5.3)
+# Secure Secret Management
 def get_secret(secret_id: str, default_env_var: str = None) -> str:
     """Retrieves a secret from Google Cloud Secret Manager.
     

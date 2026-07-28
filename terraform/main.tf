@@ -1,4 +1,4 @@
-# Terraform Configuration for FinSentry Agent Infrastructure (Rubric 5.2)
+# Terraform Configuration for FinSentry Agent Infrastructure
 
 terraform {
   required_version = ">= 1.0.0"
@@ -31,7 +31,7 @@ variable "agent_service_account_email" {
   description = "The service account email address used by the FinSentry agent runtime."
 }
 
-# 1. Provision Secret Manager for secure secrets storage (Rubric 5.3)
+# 1. Provision Secret Manager for secure secrets storage
 resource "google_secret_manager_secret" "gemini_api_key" {
   secret_id = "gemini-api-key"
 
@@ -47,7 +47,7 @@ resource "google_secret_manager_secret_iam_member" "agent_secret_access" {
   member    = "serviceAccount:${var.agent_service_account_email}"
 }
 
-# 3. Provision Cloud Firestore Database for Session persistence (Rubric 2.3)
+# 3. Provision Cloud Firestore Database for Session persistence
 resource "google_firestore_database" "session_db" {
   name        = "(default)"
   location_id = var.region

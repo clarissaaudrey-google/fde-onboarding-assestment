@@ -8,7 +8,7 @@ from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor, ConsoleSpanExporter
 
-# Initialize OpenTelemetry Distributed Tracing (Rubric 4.3)
+# Initialize OpenTelemetry Distributed Tracing
 # To avoid crashing when running without a collector, we configure a console span exporter
 provider = TracerProvider()
 processor = SimpleSpanProcessor(ConsoleSpanExporter(out=sys.stderr))
@@ -16,7 +16,7 @@ provider.add_span_processor(processor)
 trace.set_tracer_provider(provider)
 tracer = trace.get_tracer("finsentry")
 
-# PII Scrubbing Rules (Rubric 4.4)
+# PII Scrubbing Rules
 CREDIT_CARD_REGEX = re.compile(r"\b(?:\d[ -]*?){13,16}\b")
 SSN_REGEX = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
 EMAIL_REGEX = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b")
@@ -41,7 +41,7 @@ def pii_redaction_processor(logger, method_name, event_dict):
     """structlog processor to scrub PII from all log event payloads before writing."""
     return redact_value(event_dict)
 
-# Configure Structured JSON Logging (Rubric 4.1)
+# Configure Structured JSON Logging
 structlog.configure(
     processors=[
         structlog.processors.TimeStamper(fmt="iso"),
@@ -58,7 +58,7 @@ structlog.configure(
 
 logger = structlog.get_logger()
 
-# Intent vs Outcome Capture helper (Rubric 4.2)
+# Intent vs Outcome Capture helper
 class IntentOutcomeSpan:
     """A context manager to automatically log an agent's intent before execution
 
@@ -76,7 +76,7 @@ class IntentOutcomeSpan:
         ctx = self.otel_span.get_span_context()
         self.trace_id = format(ctx.trace_id, "032x")
         
-        # Log Intent before execution (Rubric 4.2)
+        # Log Intent before execution
         logger.info(
             "agent_intent_captured",
             action=self.action_name,
@@ -102,7 +102,7 @@ class IntentOutcomeSpan:
             self.otel_span.set_attribute("status", "error")
             self.otel_span.record_exception(exc_val)
         else:
-            # Log successful outcome (Rubric 4.2)
+            # Log successful outcome
             logger.info(
                 "agent_outcome_captured",
                 action=self.action_name,

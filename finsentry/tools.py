@@ -2,7 +2,7 @@ import uuid
 from typing import Dict, Any
 from pydantic import BaseModel, Field, ValidationError
 
-# Explicit JSON Schemas using Pydantic Models for LLM input validation (Rubric 1.3)
+# Explicit JSON Schemas using Pydantic Models for LLM input validation
 
 class ReceiptScanInput(BaseModel):
     raw_text: str = Field(
@@ -40,7 +40,7 @@ class UnauthorizedChargeInput(BaseModel):
 
 # ----------------- Tool Implementations -----------------
 
-# Descriptive Naming (Rubric 1.2) and Comprehensive Docstrings (Rubric 1.1)
+# Tool implementations with specific naming and descriptive docstrings
 
 def scan_receipt_for_subscription(raw_text: str) -> Dict[str, Any]:
     """Parses raw receipt or statement text to detect candidate recurring subscription details.
@@ -58,7 +58,7 @@ def scan_receipt_for_subscription(raw_text: str) -> Dict[str, Any]:
     try:
         inputs = ReceiptScanInput(raw_text=raw_text)
     except ValidationError as err:
-        # Guided Error Handling (Rubric 1.4)
+        # Guided Error Handling
         return {
             "status": "error",
             "error_type": "ValidationError",
@@ -199,7 +199,7 @@ def request_subscription_cancellation(
     
     sub = mock_subscriptions.get(inputs.subscription_id, {"name": "Unknown Service", "cost": 10.00})
     
-    # Human-In-The-Loop Hook (Rubric 3.4)
+    # Human-In-The-Loop Hook
     if sub["cost"] >= 20.00:
         approval_token = f"APP-TOK-{uuid.uuid4().hex[:12].upper()}"
         return {

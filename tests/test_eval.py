@@ -11,7 +11,7 @@ from finsentry.logger import redact_value
 from finsentry.memory import compact_history_async
 from finsentry.agent import CoordinatorAgent
 
-# ==================== GOLDEN DATASET (Rubric 5.1) ====================
+# ==================== GOLDEN DATASET ====================
 GOLDEN_DATASET_RECEIPTS = [
     {
         "input": "Thank you for choosing Spotify Premium. Monthly charge: $14.99. Billing date: 2026-07-25.",
@@ -43,7 +43,7 @@ def test_receipt_parsing_golden_dataset(test_case: Dict[str, Any]):
     assert result["detected_subscription"] == test_case["is_subscription"]
 
 
-# 2. Test Human-in-the-Loop Hooks (Rubric 3.4)
+# 2. Test Human-in-the-Loop Hooks
 def test_human_in_the_loop_cancellation_threshold():
     # Low-cost cancellation should execute directly without HITL
     low_cost_res = request_subscription_cancellation("sub-netflix", "user@example.com")
@@ -58,7 +58,7 @@ def test_human_in_the_loop_cancellation_threshold():
     assert "ACTION REQUIRED" in high_cost_res["message"]
 
 
-# 3. Test PII Redaction Guardrail (Rubric 4.4)
+# 3. Test PII Redaction Guardrail
 def test_pii_redaction_scrubbing():
     raw_sensitive_log = {
         "user_email": "clarissa.audrey@google.com",
@@ -78,7 +78,7 @@ def test_pii_redaction_scrubbing():
     assert "[REDACTED_SSN]" in message
 
 
-# 4. Test History Compaction (Rubric 2.2)
+# 4. Test History Compaction
 @pytest.mark.asyncio
 async def test_history_compaction():
     # Build bloated chat history (9 turns total)

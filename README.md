@@ -1,6 +1,6 @@
 # FinSentry: Autonomous Subscription & Expense Concierge Agent
 
-FinSentry is a secure, autonomous concierge agent designed to monitor personal subscriptions, analyze receipts, draft expense disputes, and handle provider cancellations safely. FinSentry is built from the ground up to achieve a perfect score of **95/95** against the **AgentOps Code Review Matrix**.
+FinSentry is a secure, autonomous concierge agent designed to monitor personal subscriptions, analyze receipts, draft expense disputes, and handle provider cancellations safely.
 
 ---
 
@@ -32,33 +32,6 @@ graph TD
     LogScrub -.-> Logger[Structured JSON Logging]
     LogScrub -.-> OpenTelemetry[OpenTelemetry Spans]
 ```
-
----
-
-## 📋 Rubric Compliance Mapping (95/95 Points)
-
-| Category | Criteria | Implementation Evidence | File Link | Points |
-| :--- | :--- | :--- | :--- | :---: |
-| **1. Tool & Interface Design** | Comprehensive Tool Docstrings | Detailed parameters, return values, docstring guides for LLM. | [tools.py](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/finsentry/tools.py) | 5 / 5 |
-| | Descriptive Naming | e.g. `flag_unauthorized_subscription_charge`, `scan_receipt_for_subscription`. | [tools.py](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/finsentry/tools.py) | 5 / 5 |
-| | Explicit JSON Schemas | Validation using strict Pydantic inputs (`ReceiptScanInput`, `SubscriptionCancellationInput`). | [tools.py](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/finsentry/tools.py) | 5 / 5 |
-| | Guided Error Handling | Catches validation/runtime errors and returns explicit recovery suggestions to LLM. | [tools.py](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/finsentry/tools.py) | 5 / 5 |
-| **2. Context & Memory** | Robust System Instructions | Strong "constitution" defining scope, PII policies, security, and identity. | [agent.py](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/finsentry/agent.py) | 5 / 5 |
-| | History Compaction | `compact_history_async` summarizes history turns when limits are reached. | [memory.py](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/finsentry/memory.py) | 5 / 5 |
-| | Persistent Session State | Dual-state backend saving session state to Google Firestore (fallback to local JSON). | [memory.py](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/finsentry/memory.py) | 5 / 5 |
-| | Async Memory Operations | Non-blocking execution of historical compaction and embedding database updates. | [memory.py](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/finsentry/memory.py) | 5 / 5 |
-| **3. Orchestration & Logic** | Multi-Agent Patterns | `CoordinatorAgent` coordinates `ReceiptAnalyzerAgent` and `SubscriptionNegotiatorAgent`. | [agent.py](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/finsentry/agent.py) | 5 / 5 |
-| | Strategic Model Routing | Routes parsing to `gemini-2.5-flash` and complex planning/negotiation to `gemini-2.5-pro`. | [agent.py](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/finsentry/agent.py) | 5 / 5 |
-| | Guardrails & Policy Plugins | Post-execution validation script self-checks generated outputs against constraints. | [agent.py](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/finsentry/agent.py) | 5 / 5 |
-| | Human-in-the-Loop Hooks | Suspends cancellations costing >= $20, demanding a validation token to proceed. | [tools.py](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/finsentry/tools.py) | 5 / 5 |
-| **4. Observability & Tracing** | Structured JSON Logging | Implemented via `structlog` formatting all log outputs into clean, queryable JSON lines. | [logger.py](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/finsentry/logger.py) | 5 / 5 |
-| | Intent vs. Outcome Capture | Context manager captures `agent_intent_captured` pre-run and `agent_outcome_captured` post-run. | [logger.py](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/finsentry/logger.py) | 5 / 5 |
-| | Distributed Tracing | Built-in OpenTelemetry SDK spans tracing requests from coordinator down to workers. | [logger.py](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/finsentry/logger.py) | 5 / 5 |
-| | PII Redaction | Active regex processor scrubbing credit cards, emails, and SSNs before log persistence. | [logger.py](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/finsentry/logger.py) | 5 / 5 |
-| **5. Infrastructure & CI/CD** | Automated Evaluation Suites | Parameterized regression test suite executing against a golden dataset checking accuracy. | [test_eval.py](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/tests/test_eval.py) | 5 / 5 |
-| | Infrastructure as Code | Root `main.tf` provisioning Firestore & Secret Manager, and `deploy.sh` script automating deployment via `adk` CLI. | [main.tf](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/main.tf) / [deploy.sh](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/deploy.sh) | 5 / 5 |
-| | Secure Secret Management | Connects to GCP Secret Manager API at runtime; safe offline env fallback if missing. | [config.py](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/finsentry/config.py) | 5 / 5 |
-| | **Total Score** | | | **95 / 95** |
 
 ---
 

@@ -9,7 +9,7 @@ from google.api_core.exceptions import GoogleAPIError
 LOCAL_DB_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
 LOCAL_DB_PATH = os.path.join(LOCAL_DB_DIR, "session_store.json")
 
-# Persistent Session State (Rubric 2.3)
+# Persistent Session State
 def get_db_client() -> Any:
     """Attempts to initialize and return a Firestore client.
     
@@ -83,7 +83,7 @@ def save_session(session_id: str, data: Dict[str, Any]) -> None:
         print(f"[ERROR] Failed to save session state locally: {e}")
 
 
-# History Compaction (Rubric 2.2) & Async Memory Operations (Rubric 2.4)
+# History Compaction & Async Memory Operations
 
 async def compact_history_async(history: List[Dict[str, Any]], client_or_mock_llm: Any) -> List[Dict[str, Any]]:
     """Asynchronously compacts long chat history to manage token limits.
@@ -118,7 +118,7 @@ async def compact_history_async(history: List[Dict[str, Any]], client_or_mock_ll
 
     # Run the summarization call asynchronously in a separate task
     # (Using a mock sleep to represent the async network call duration, and a simple heuristic summarizer)
-    await asyncio.sleep(0.1) # Async network simulation (Rubric 2.4)
+    await asyncio.sleep(0.1) # Async network simulation
     
     # Simple heuristic summarization if live LLM client isn't fully set up
     vendor_names = set()
