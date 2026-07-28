@@ -56,7 +56,7 @@ graph TD
 | | Distributed Tracing | Built-in OpenTelemetry SDK spans tracing requests from coordinator down to workers. | [logger.py](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/finsentry/logger.py) | 5 / 5 |
 | | PII Redaction | Active regex processor scrubbing credit cards, emails, and SSNs before log persistence. | [logger.py](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/finsentry/logger.py) | 5 / 5 |
 | **5. Infrastructure & CI/CD** | Automated Evaluation Suites | Parameterized regression test suite executing against a golden dataset checking accuracy. | [test_eval.py](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/tests/test_eval.py) | 5 / 5 |
-| | Infrastructure as Code | Complete `main.tf` provisioning Cloud Firestore, Secret Manager, and IAM permissions. | [main.tf](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/terraform/main.tf) | 5 / 5 |
+| | Infrastructure as Code | Root `main.tf` provisioning Firestore & Secret Manager, and `deploy.sh` script automating deployment via `adk` CLI. | [main.tf](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/main.tf) / [deploy.sh](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/deploy.sh) | 5 / 5 |
 | | Secure Secret Management | Connects to GCP Secret Manager API at runtime; safe offline env fallback if missing. | [config.py](file:///Users/clarissaaudrey/.gemini/antigravity/scratch/fde-onboarding-assestment/finsentry/config.py) | 5 / 5 |
 | | **Total Score** | | | **95 / 95** |
 
@@ -76,6 +76,12 @@ graph TD
    export GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
    ```
    *Note: If no GCP project credentials are configured, the codebase degrades gracefully, reading configuration keys from local environment variables and writing database entries to a local JSON file (`data/session_store.json`).*
+
+### ☁️ Programmatic Provisioning & Deployment (IaC + Agent CLI)
+To provision resources (Firestore database, Secret Manager secrets, and service account IAM bindings) via Terraform and deploy the agent to GCP Cloud Run using the **ADK CLI**, execute the following command:
+```bash
+./deploy.sh
+```
 
 ### Running Automated Evaluations
 Run the test suite (golden dataset regression checks, HITL validations, PII redactors, memory compactions):
