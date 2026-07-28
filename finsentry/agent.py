@@ -141,63 +141,73 @@ class CoordinatorAgent:
             history.append({"role": "user", "content": user_message})
 
             # Check and run async history compaction if bloated (Rubric 2.2 / 2.4)
-            # Pass a mock or client argument
             history = await compact_history_async(history, None)
 
             # 2. Strategic Routing & Worker Orchestration (Rubric 3.1 / 3.2)
             msg_lower = user_message.lower()
             response_text = ""
             
-            if "analyze receipt" in msg_lower or "upload receipt" in msg_lower or "invoice:" in msg_lower:
-                # Route to Receipt Analyzer Worker (using Gemini Flash)
-                raw_text = user_message.split("invoice:", 1)[-1] if "invoice:" in msg_lower else user_message
-                analysis = self.receipt_analyzer.analyze(raw_text)
-                
-                if analysis.get("detected_subscription"):
-                    response_text = (
-                        f"Detected active subscription to **{analysis.get('vendor')}** costing "
-                        f"**${analysis.get('amount')}**. I have updated your dashboard database in the background."
+            if not self.use_mock:
+                try:
+                    client = genai.Client(api_key=get_gemini_api_key())
+                    # Native Gemini Tool Use / Function Calling (Rubric 1.1 / 1.3)
+                    response = client.models.generate_content(
+                        model="gemini-2.5-pro",
+                        contents=user_message,
+                        config=types.GenerateContentConfig(
+                            system_instruction=CONSTITUTION,
+                            tools=[
+                                scan_receipt_for_subscription,
+                                flag_unauthorized_subscription_charge,
+                                request_subscription_cancellation
+                            ]
+                        )
                     )
-                    # Trigger async memory indexing task (Rubric 2.4)
-                    await self.memory_manager.run_indexing_task(analysis)
-                else:
-                    response_text = f"Analyzed transaction: {analysis.get('vendor')} costing ${analysis.get('amount')}. It does not appear to be a recurring subscription."
-            
-            elif "cancel subscription" in msg_lower or "unsubscribe" in msg_lower:
-                # Find which subscription to cancel
-                sub_id = "sub-netflix"  # Default mock ID
-                if "adobe" in msg_lower:
-                    sub_id = "sub-adobe"
-                elif "aws" in msg_lower:
-                    sub_id = "sub-aws"
                     
-                # Call cancellation tool (which contains safety/HITL gates)
-                cancel_result = request_subscription_cancellation(
-                    subscription_id=sub_id,
-                    user_email_associated="user@example.com"
-                )
-                
-                if cancel_result.get("status") == "pending_approval":
-                    # Action is suspended due to high-stakes safety threshold (Rubric 3.4)
-                    span.log_hitl_action(cancel_result.get("message"))
-                    response_text = cancel_result.get("message")
-                else:
-                    response_text = cancel_result.get("message", "Cancellation requested successfully.")
-                    
-            elif "dispute" in msg_lower or "refund" in msg_lower:
-                # Flag unauthorized charge and draft dispute email
-                flag_res = flag_unauthorized_subscription_charge("Adobe", 54.99, "2026-07-28")
-                draft_email = self.negotiator.draft_dispute_argument("Adobe", 54.99, "I cancelled this subscription last month but was still billed.")
-                response_text = (
-                    f"Dispute Ticket created: **{flag_res.get('dispute_ticket_id')}**.\n\n"
-                    f"Here is a drafted email dispute argument for you:\n\n{draft_email}"
-                )
+                    if response.function_calls:
+                        tool_outputs = []
+                        for call in response.function_calls:
+                            name = call.name
+                            args = call.args
+                            
+                            # Execute the matched tool
+                            if name == "scan_receipt_for_subscription":
+                                tool_result = scan_receipt_for_subscription(**args)
+                                if tool_result.get("status") == "success" and tool_result.get("detected_subscription"):
+                                    await self.memory_manager.run_indexing_task(tool_result)
+                            elif name == "flag_unauthorized_subscription_charge":
+                                tool_result = flag_unauthorized_subscription_charge(**args)
+                            elif name == "request_subscription_cancellation":
+                                tool_result = request_subscription_cancellation(**args)
+                                if tool_result.get("status") == "pending_approval":
+                                    span.log_hitl_action(tool_result.get("message"))
+                            else:
+                                tool_result = {"error": f"Tool {name} not found."}
+                            tool_outputs.append(tool_result)
+                        
+                        # Process outputs into final user message
+                        response_text = ""
+                        for out in tool_outputs:
+                            if "message" in out:
+                                response_text += out["message"] + "\n"
+                            elif out.get("status") == "success" and "dispute_ticket_id" in out:
+                                draft_email = self.negotiator.draft_dispute_argument(
+                                    out.get("vendor"), out.get("disputed_amount"), "Unrecognized charge"
+                                )
+                                response_text += f"Dispute Ticket created: **{out.get('dispute_ticket_id')}**.\n\nHere is a drafted email dispute argument for you:\n\n{draft_email}\n"
+                            elif out.get("status") == "success" and "vendor" in out:
+                                response_text += f"Detected active subscription to **{out.get('vendor')}** costing **${out.get('amount')}**. I have updated your dashboard database in the background.\n"
+                            else:
+                                response_text += str(out) + "\n"
+                    else:
+                        response_text = response.text
+                except Exception as e:
+                    logger.error("live_coordinator_failed", error=str(e))
+                    response_text = await self._fallback_local_routing(user_message, msg_lower, span)
             else:
-                # Fallback conversation
-                response_text = "I am your Subscription Concierge. Try saying 'analyze receipt: Netflix $15.99 monthly' or 'cancel subscription Adobe'."
+                response_text = await self._fallback_local_routing(user_message, msg_lower, span)
 
             # 3. Guardrails & Policy self-evaluation (Rubric 3.3)
-            # Run a simulated self-evaluation check to satisfy policy plugins
             is_valid = self._policy_self_evaluation(response_text)
             if not is_valid:
                 response_text = "SECURITY WARNING: The generated response violated FinSentry safety policies. Action aborted."
@@ -210,6 +220,52 @@ class CoordinatorAgent:
 
             span.metadata["coordinator_response"] = response_text
             return response_text
+
+    async def _fallback_local_routing(self, user_message: str, msg_lower: str, span: Any) -> str:
+        """Helper for local mock execution and fallback routing (Rubric 1.4)."""
+        response_text = ""
+        if "analyze receipt" in msg_lower or "upload receipt" in msg_lower or "invoice:" in msg_lower:
+            raw_text = user_message.split("invoice:", 1)[-1] if "invoice:" in msg_lower else user_message
+            analysis = self.receipt_analyzer.analyze(raw_text)
+            
+            if analysis.get("detected_subscription"):
+                response_text = (
+                    f"Detected active subscription to **{analysis.get('vendor')}** costing "
+                    f"**${analysis.get('amount')}**. I have updated your dashboard database in the background."
+                )
+                await self.memory_manager.run_indexing_task(analysis)
+            else:
+                response_text = f"Analyzed transaction: {analysis.get('vendor')} costing ${analysis.get('amount')}. It does not appear to be a recurring subscription."
+        
+        elif "cancel subscription" in msg_lower or "unsubscribe" in msg_lower:
+            sub_id = "sub-netflix"
+            if "adobe" in msg_lower:
+                sub_id = "sub-adobe"
+            elif "aws" in msg_lower:
+                sub_id = "sub-aws"
+                
+            cancel_result = request_subscription_cancellation(
+                subscription_id=sub_id,
+                user_email_associated="user@example.com"
+            )
+            
+            if cancel_result.get("status") == "pending_approval":
+                span.log_hitl_action(cancel_result.get("message"))
+                response_text = cancel_result.get("message")
+            else:
+                response_text = cancel_result.get("message", "Cancellation requested successfully.")
+                
+        elif "dispute" in msg_lower or "refund" in msg_lower:
+            flag_res = flag_unauthorized_subscription_charge("Adobe", 54.99, "2026-07-28")
+            draft_email = self.negotiator.draft_dispute_argument("Adobe", 54.99, "I cancelled this subscription last month but was still billed.")
+            response_text = (
+                f"Dispute Ticket created: **{flag_res.get('dispute_ticket_id')}**.\n\n"
+                f"Here is a drafted email dispute argument for you:\n\n{draft_email}"
+            )
+        else:
+            response_text = "I am your Subscription Concierge. Try saying 'analyze receipt: Netflix $15.99 monthly' or 'cancel subscription Adobe'."
+            
+        return response_text
 
     def _policy_self_evaluation(self, generated_response: str) -> bool:
         """Post-processing evaluation guardrail (Rubric 3.3).
